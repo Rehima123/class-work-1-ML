@@ -1,6 +1,7 @@
 """
-Practical Engineering Case Study: Pump Warning Classification (Binary)
+Practical Engineering Case Study: Pump Warning Detection (Binary Classification)
 Target: Classify if a pump observation is a Warning (1) or Not Warning (0).
+Algorithms: SVM, Naïve Bayes, Decision Tree, Random Forest, AdaBoost
 """
 import numpy as np
 import pandas as pd
@@ -37,7 +38,7 @@ data = [
     [9,  2.5, 1435,  64,  8.9, 2600, 0],  # Normal
     [10, 1.2, 1510,  49, 10.3,  950, 0],  # Normal
     
-    [11, 3.5, 1410,  70,  7.8, 3200, 1],  # Warning
+    [11, 3.5, 1410,  70,  7.8, 3200, 1],  # Warning (Target = 1)
     [12, 3.8, 1395,  73,  7.5, 3600, 1],  # Warning
     [13, 4.2, 1380,  76,  7.1, 4100, 1],  # Warning
     [14, 3.6, 1400,  72,  7.6, 3400, 1],  # Warning
@@ -48,7 +49,7 @@ data = [
     [19, 4.1, 1385,  75,  7.2, 3900, 1],  # Warning
     [20, 4.8, 1340,  83,  6.2, 5000, 1],  # Warning
     
-    [21, 6.0, 1300,  86,  5.5, 5600, 0],  # Fault (Not Warning - Severe)
+    [21, 6.0, 1300,  86,  5.5, 5600, 0],  # Fault (Severe - Not Warning)
     [22, 6.5, 1280,  89,  5.1, 6100, 0],  # Fault
     [23, 7.1, 1250,  92,  4.6, 6800, 0],  # Fault
     [24, 5.8, 1310,  85,  5.7, 5400, 0],  # Fault
@@ -84,6 +85,9 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.30, random_state=42, stratify=y
 )
 
+print(f"\nTraining records: {len(X_train)}")
+print(f"Testing records:  {len(X_test)}")
+
 # ============================================================
 # PART 3. DEFINE FIVE CLASSIFIERS
 # ============================================================
@@ -114,19 +118,23 @@ models = {
 }
 
 # ============================================================
-# PART 4. TRAIN, PREDICT, EVALUATE
+# PART 4. TRAIN, PREDICT, AND EVALUATE EACH MODEL
 # ============================================================
 
 results = []
 
-for model_name, model in models.items():
+for model_name, model in models.items() :
     print("\n" + "=" * 65)
-    print(f"{model_name.upper()} - WARNING DETECTION")
+    print(f"{model_name.upper()} - WARNING DETECTION TRAINING")
     print("=" * 65)
 
+    # Train model
     model.fit(X_train, y_train)
+
+    # Predict test set
     y_pred = model.predict(X_test)
 
+    # Metrics
     accuracy = accuracy_score(y_test, y_pred)
     precision = precision_score(y_test, y_pred, zero_division=0)
     recall = recall_score(y_test, y_pred, zero_division=0)
@@ -148,14 +156,58 @@ for model_name, model in models.items():
     print(classification_report(
         y_test, y_pred,
         labels=[0, 1],
-        target_names=["Other (Normal/Fault)", "Warning"],
+        target_names=["Other", "Warning"],
         zero_division=0
     ))
+
+    # Confusion Matrix Visualization
+    fig, ax = plt.subplots(figsize=(5, 4))
+    ConfusionMatrixDisplay.from_predictions(
+        y_test, y_pred,
+        display_labels=["Other", "Warning"],
+        cmap="Blues",
+        colorbar=False,
+        ax=ax
+    )
+    ax.set_title(f"{model_name}: Warning Detection CM")
+    plt.tight_layout()
+    plt.show()
 
 # ============================================================
 # PART 5. MODEL COMPARISON
 # ============================================================
 
 results_df = pd.DataFrame(results).set_index("Algorithm")
-print("\nMODEL COMPARISON (WARNING FOCUS)")
+print("\nMODEL COMPARISON (WARNING DETECTION)")
 print(results_df.round(3))
+
+results_df.plot(kind="bar", figsize=(10, 5), ylim=(0, 1.05))
+plt.title("Algorithm Comparison for Pump Warning Detection")
+plt.ylabel("Score")
+plt.xlabel("Algorithm")
+plt.xticks(rotation=20)
+plt.legend(loc="lower right")
+plt.tight_layout()
+plt.show()
+
+# ============================================================
+# PART 6. TEST A NEW PUMP OBSERVATION FOR WARNING
+# ============================================================
+
+new_observation = pd.DataFrame([{
+    "Vibration_mm_s": 3.7,
+    "RPM": 1390,
+    "Temperature_C": 72,
+    "Pressure_bar": 7.4,
+    "Operating_Hours": 3500
+}])
+
+print("\nNEW PUMP OBSERVATION TEST")
+print(new_observation)
+
+for name, model in models.items():
+    pred = int(model.predict(new_observation)[0])
+    label = "Warning" if pred == 1 else "Other (Normal/Fault)"
+    print(f"{name:15s} prediction: {label}")
+
+print("\nEND OF WARNING CLASSIFICATION CASE STUDY")
