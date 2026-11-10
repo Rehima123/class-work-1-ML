@@ -72,6 +72,31 @@ print(df.to_string(index=False))
 print("\nClass distribution:")
 print(df["Is_Warning"].value_counts().rename(index={0: "Other (Normal/Fault)", 1: "Warning"}))
 
+# --- Scatter plot: Vibration vs Temperature ---
+sns.set_theme(style="whitegrid")
+plt.figure(figsize=(8, 5))
+sns.scatterplot(
+    data=df, x="Vibration_mm_s", y="Temperature_C",
+    hue="Is_Warning", style="Is_Warning",
+    palette={0: "steelblue", 1: "tomato"}, s=100
+)
+plt.title("Pump: Vibration vs Temperature by Class")
+plt.xlabel("Vibration (mm/s)")
+plt.ylabel("Temperature (°C)")
+plt.legend(title="0=Other, 1=Warning")
+plt.tight_layout()
+plt.show()
+
+# --- Correlation heatmap ---
+plt.figure(figsize=(8, 6))
+sns.heatmap(
+    df[["Vibration_mm_s", "RPM", "Temperature_C", "Pressure_bar", "Operating_Hours", "Is_Warning"]].corr(),
+    annot=True, cmap="coolwarm", fmt=".2f"
+)
+plt.title("Correlation Matrix – Pump Features")
+plt.tight_layout()
+plt.show()
+
 # Separate predictors (X) and target (y).
 feature_cols = ["Vibration_mm_s", "RPM", "Temperature_C", "Pressure_bar", "Operating_Hours"]
 X = df[feature_cols]
@@ -191,7 +216,46 @@ plt.tight_layout()
 plt.show()
 
 # ============================================================
-# PART 6. TEST A NEW PUMP OBSERVATION FOR WARNING
+# PART 6. FEATURE IMPORTANCE (TREE-BASED MODELS)
+# ============================================================
+
+tree_models = {
+    "Decision Tree": decision_tree_model,
+    "Random Forest": random_forest_model
+}
+
+for name, model in tree_models.items():
+    importance = pd.Series(
+        model.feature_importances_, index=feature_cols
+    ).sort_values(ascending=False)
+
+    print(f"\n{name} feature importance:")
+    print(importance.round(3))
+
+    plt.figure(figsize=(7, 4))
+    plt.barh(importance.index, importance.values, color="steelblue")
+    plt.title(f"{name}: Feature Importance")
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.tight_layout()
+    plt.show()
+
+# Decision Tree visualization
+plt.figure(figsize=(16, 8))
+plot_tree(
+    decision_tree_model,
+    feature_names=feature_cols,
+    class_names=["Other", "Warning"],
+    filled=True,
+    rounded=True,
+    fontsize=9
+)
+plt.title("Decision Tree – Pump Warning Detection")
+plt.tight_layout()
+plt.show()
+
+# ============================================================
+# PART 7. TEST A NEW PUMP OBSERVATION FOR WARNING
 # ============================================================
 
 new_observation = pd.DataFrame([{
